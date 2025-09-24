@@ -1,0 +1,23 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8" />
+  <title>Roulette Prototype</title>
+  <script src="/eel.js"></script>
+  <script src="main.js"></script>
+  <style>
+    body { font-family: sans-serif; text-align: center; }
+    canvas { border: 1px solid #ccc; margin: 10px; }
+  </style>
+</head>
+<body>
+  <h1>Roulette Prototype</h1>
+  <div>
+    <button onclick="spinEvent()">Spin Event Roulette</button>
+    <button onclick="spinPerson()">Spin People Roulette</button>
+  </div>
+  <p id="event-result"></p>
+  <p id="person-result"></p>
+  <canvas id="roulette" width="400" height="400"></canvas>
+</body>
+</html>
