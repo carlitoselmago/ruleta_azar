@@ -1,3 +1,9 @@
+//SETTINGS
+let weightsSpeed=400; //greater is slower
+let spinSpeed=10000;//greater is slower
+//
+
+
 let weights = {};
 let people = [];
 let events = [];
@@ -10,13 +16,13 @@ let peopleRotation = 0;
 let currentWeights = {};
 let animatingWeights = false;
 
-window.name = "main"; 
+window.name = "main";
 
 async function init() {
     const pdata = await eel.get_people()();
     people = pdata.people;
     weights = pdata.weights;
-    currentWeights = {...weights};
+    currentWeights = { ...weights };
 
     events = await eel.get_events()();
 
@@ -32,7 +38,7 @@ async function init() {
         people.map(p => currentWeights[p.name] || 0),
         peopleRotation
     );
-    eel.open_control();
+
 }
 
 function drawRoulette(canvasId, labels, ws, rotation = 0) {
@@ -68,7 +74,7 @@ function drawRoulette(canvasId, labels, ws, rotation = 0) {
         ctx.translate(cx, cy);
         ctx.rotate(start + slice / 2);
         ctx.fillStyle = "white";
-        ctx.font = "14px sans-serif";
+        ctx.font = "58px sans-serif";
         ctx.textAlign = "center";
         ctx.textBaseline = "middle";
         ctx.fillText(labels[i], r * 0.6, 0);
@@ -78,21 +84,22 @@ function drawRoulette(canvasId, labels, ws, rotation = 0) {
     }
 
     // pointer at top center
-    ctx.fillStyle = "red";
+    ctx.fillStyle = "black";
     ctx.beginPath();
-    ctx.moveTo(cx - 10, 5);
-    ctx.lineTo(cx + 10, 5);
-    ctx.lineTo(cx, 25);
+    ctx.moveTo(cx - 20, 5);
+    ctx.lineTo(cx + 20, 5);
+    ctx.lineTo(cx, 30);
     ctx.closePath();
     ctx.fill();
 }
 
 // EASING
-function easeOutCubic(t) {
-    return 1 - Math.pow(1 - t, 3);
+function easeInOutCubic(t) {
+    return 1 - Math.pow(1 - t, 5);
 }
 
-// Compute rotation so the center of slice[index] lands at the top pointer
+
+
 function computeEndRotation(ws, index, currentRotation, extraTurns = 3) {
     let total = ws.reduce((a, b) => a + b, 0);
     if (total <= 0) total = ws.length;
@@ -105,7 +112,16 @@ function computeEndRotation(ws, index, currentRotation, extraTurns = 3) {
     const slice = (ws[index] / total) * twoPi;
 
     const pointerAngle = -Math.PI / 2; // top
-    let base = pointerAngle - sumPrev - slice / 2;
+
+    // 🎯 Instead of stopping at the center, add a small random offset
+    // close to the slice border (like real wheel inertia)
+    const edgeBias = (Math.random() * 0.6 + 0.2); 
+    // 0.2–0.8 fraction of the slice — avoid exact borders
+    //const offsetFromCenter = (edgeBias - 0.5) * slice * 0.9;
+    const offsetFromCenter = (edgeBias - 0.5) * slice * 0.95;
+    // the *0.9 keeps it safely inside the slice
+
+    let base = pointerAngle - sumPrev - slice / 2 + offsetFromCenter;
 
     // ensure we rotate forward to a nice stopping point
     let end = base;
@@ -125,7 +141,7 @@ function animateTo(which, labels, ws, end, duration = 2000) {
         function step(ts) {
             if (!startTS) startTS = ts;
             const t = Math.min((ts - startTS) / duration, 1);
-            const eased = easeOutCubic(t);
+            const eased = easeInOutCubic(t);
             const rot = start + (end - start) * eased;
 
             if (which === "event") eventRotation = rot;
@@ -141,9 +157,11 @@ function animateTo(which, labels, ws, end, duration = 2000) {
 }
 
 async function spinEvent() {
+       document.querySelector("#people-roulette").classList.remove("changing");
+    document.querySelector("#event-result span").innerText = "";
     if (spinning) return;
     spinning = true;
-
+    document.querySelector("#person-result span").innerText = "";
     // Ask backend which event happens + updated weights
     const result = await eel.spin_event()();
     const labels = events.map(e => e.desc);
@@ -152,14 +170,17 @@ async function spinEvent() {
 
     // Animate wheel so the chosen event lands under the pointer
     const end = computeEndRotation(ws, idx, eventRotation, 3);
-    await animateTo("event", labels, ws, end, 2000);
+    await animateTo("event", labels, ws, end, spinSpeed);
 
     // Show result and animate people weights
-    document.getElementById("event-result").innerText = "Event: " + result.event.desc;
+    document.querySelector("#event-result span").innerText = result.event.desc;
     weights = result.weights;
-    animateWeights(); // smoothly grow/shrink people slices
+    setTimeout(() => {
+        animateWeights(); // smoothly grow/shrink people slices
+         document.querySelector("#people-roulette").classList.add("changing");
+        spinning = false;
+    }, 1000);
 
-    spinning = false;
 }
 
 async function spinPerson() {
@@ -173,17 +194,17 @@ async function spinPerson() {
     const labels = people.map(p => p.name);
     let ws = labels.map(n => currentWeights[n] || 0);
     // fallback to equal slices if all zero (shouldn't happen, but safe)
-    if (ws.reduce((a,b)=>a+b,0) <= 0) ws = labels.map(_ => 1);
+    if (ws.reduce((a, b) => a + b, 0) <= 0) ws = labels.map(_ => 1);
 
     const idx = labels.indexOf(chosen);
 
     // Animate to land on the chosen person BEFORE removing locally
     const end = computeEndRotation(ws, idx, peopleRotation, 3);
-    await animateTo("people", labels, ws, end, 2200);
+    await animateTo("people", labels, ws, end, spinSpeed);
 
     // Show result, then remove locally to match backend state
-    document.getElementById("person-result").innerText =
-        result.done ? `Winner: ${chosen}` : `Chosen: ${chosen}`;
+    document.querySelector("#person-result span").innerText = chosen;
+
 
     people = people.filter(p => p.name !== chosen);
     delete weights[chosen];
@@ -203,10 +224,10 @@ async function spinPerson() {
 // Smoothly tween people weights after an event
 function animateWeights() {
     animatingWeights = true;
-    const steps = 30;
+    const steps = weightsSpeed;
     let frame = 0;
-    const startWeights = {...currentWeights};
-    const targetWeights = {...weights};
+    const startWeights = { ...currentWeights };
+    const targetWeights = { ...weights };
 
     function animate() {
         frame++;
@@ -227,11 +248,23 @@ function animateWeights() {
         if (frame < steps) {
             requestAnimationFrame(animate);
         } else {
-            currentWeights = {...targetWeights};
+            currentWeights = { ...targetWeights };
             animatingWeights = false;
         }
     }
     animate();
 }
+
+
+// Listen for key presses
+document.addEventListener("keydown", (event) => {
+    // Check if the key pressed is "1"
+    if (event.key === "1") {
+        spinEvent();
+    }
+    if (event.key === "2") {
+        spinPerson();
+    }
+});
 
 init();

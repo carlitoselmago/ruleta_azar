@@ -18,16 +18,16 @@
       text-shadow: 0 0 10px #0ff, 0 0 20px #0ff;
     }
     #event-result {
-      font-size: 24px;
+     
       margin: 10px;
-      color: #ff0;
-      text-shadow: 0 0 15px #ff0, 0 0 30px #ff8800;
+     
+      
     }
     #person-result {
-      font-size: 20px;
+    
       margin: 10px;
-      color: #0f0;
-      text-shadow: 0 0 10px #0f0, 0 0 20px #0f0;
+     
+     
     }
     .controls {
       margin: 20px;
@@ -55,11 +55,36 @@
           height: 100dvh;
     }
     canvas {
-      background: #111;
+    
       border-radius: 50%;
      
       width: 30vw;
       height: 30vw;
+      border: solid black 15px;
+    }
+    canvas.changing{
+      border-color:white;
+    }
+    .results{
+      position: absolute;
+    bottom: 0px;
+    width: 100vw;
+    display: flex
+;
+    align-items: center;
+    justify-content: space-between;
+        height: 24dvh;
+    }
+    .result{
+    width: 50vw;
+       font-size: 2vh;
+      
+    }
+    .result span{
+    font-size: 5vh;
+    font-weight: bold;
+    line-height: 4.5vh;
+    display: block;
     }
   </style>
 </head>
@@ -68,13 +93,13 @@
  
   
   <div class="wheels">
-    <canvas id="event-roulette" width="300" height="300"></canvas>
-    <canvas id="people-roulette" width="300" height="300"></canvas>
+    <canvas id="event-roulette" width="1200" height="1200"></canvas>
+    <canvas id="people-roulette" width="1200" height="1200"></canvas>
   </div>
-  <!--
-   <div id="event-result">Event: --</div>
-  <div id="person-result">Chosen: --</div>-->
-
+  <div class="results">
+   <div id="event-result" class="result">FACTOR<span></span></div>
+  <div id="person-result" class="result">ELIMINADE<span></span> </div>
+    </div>
 
 </body>
 </html>
