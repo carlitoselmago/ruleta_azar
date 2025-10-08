@@ -10,6 +10,8 @@ let peopleRotation = 0;
 let currentWeights = {};
 let animatingWeights = false;
 
+window.name = "main"; 
+
 async function init() {
     const pdata = await eel.get_people()();
     people = pdata.people;
@@ -30,6 +32,7 @@ async function init() {
         people.map(p => currentWeights[p.name] || 0),
         peopleRotation
     );
+    eel.open_control();
 }
 
 function drawRoulette(canvasId, labels, ws, rotation = 0) {

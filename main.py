@@ -1,7 +1,7 @@
 import eel
 import random
 
-eel.init("web")
+eel.init("web",allowed_extensions=['.js', '.html'])
 
 # Example data
 people = [
@@ -68,5 +68,9 @@ def spin_person():
 
     return {"chosen": chosen, "remaining": names, "done": len(people) == 0}
 
+@eel.expose
+def open_control():
+    #eel.spawn(eel.start,'control.html', size=(600, 400),block=False,port=8001)
+    eel.show('control.html')
 
 eel.start("index.html", size=(800, 600))
