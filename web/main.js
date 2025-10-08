@@ -12,19 +12,50 @@ let spinning = false;
 let eventRotation = 0;
 let peopleRotation = 0;
 
+// Preload images (one per person)
+let personImages = {};
+
 // animated weights for people
 let currentWeights = {};
 let animatingWeights = false;
 
 window.name = "main";
 
+// Preload images (returns a Promise that resolves when all are loaded)
+function preloadImages(people) {
+    const promises = [];
+    const images = {};
+
+    for (const p of people) {
+        const img = new Image();
+        img.src = `images/${p.name.toLowerCase()}.png`; // <-- check your filenames!
+        images[p.name] = img;
+
+        promises.push(
+            new Promise((resolve, reject) => {
+                img.onload = () => resolve();
+                img.onerror = () => {
+                    console.warn(`⚠️ Could not load image for ${p.name} (${img.src})`);
+                    resolve(); // still continue even if one fails
+                };
+            })
+        );
+    }
+
+    return Promise.all(promises).then(() => images);
+}
+
+
 async function init() {
     const pdata = await eel.get_people()();
     people = pdata.people;
     weights = pdata.weights;
     currentWeights = { ...weights };
-
     events = await eel.get_events()();
+
+    personImages = await preloadImages(people); // ⏳ wait for all images
+
+    console.log("✅ All images loaded:", Object.keys(personImages));
 
     drawRoulette(
         "event-roulette",
@@ -38,25 +69,30 @@ async function init() {
         people.map(p => currentWeights[p.name] || 0),
         peopleRotation
     );
-
 }
 
 function drawRoulette(canvasId, labels, ws, rotation = 0) {
     const canvas = document.getElementById(canvasId);
     const ctx = canvas.getContext("2d");
     let total = ws.reduce((a, b) => a + b, 0);
-    if (total <= 0) total = labels.length; // fallback: equal slices
+    if (total <= 0) total = labels.length;
 
     ctx.clearRect(0, 0, canvas.width, canvas.height);
 
     const cx = canvas.width / 2;
     const cy = canvas.height / 2;
     const r = (canvas.width / 2) - 5;
+    const fontSize = Math.max(14, r * 0.07);
+    const textRadius = r * 0.65; // distance for text
+    const imageRadius = r * 0.8; // distance for PNGs
+    const imageSize = r * 0.15; // size of the icons
 
     let start = rotation;
     const twoPi = Math.PI * 2;
 
     for (let i = 0; i < labels.length; i++) {
+        let label = labels[i];
+       
         const slice = (ws[i] / total) * twoPi;
 
         // slice
@@ -74,16 +110,52 @@ function drawRoulette(canvasId, labels, ws, rotation = 0) {
         ctx.translate(cx, cy);
         ctx.rotate(start + slice / 2);
         ctx.fillStyle = "white";
-        ctx.font = "58px sans-serif";
+        ctx.font = `${fontSize}px sans-serif`;
         ctx.textAlign = "center";
         ctx.textBaseline = "middle";
-        ctx.fillText(labels[i], r * 0.6, 0);
-        ctx.restore();
+        let labelprinted=label;
+         if (canvasId=="people-roulette"){
+            labelprinted+="                   ";
+        }
+        ctx.fillText(labelprinted, textRadius, 0);
 
+        // image
+        const img = personImages[label];
+        if (img && img.complete && img.naturalWidth > 0) {
+            ctx.save();
+            ctx.translate(imageRadius, 0);
+            ctx.rotate(Math.PI / 2); // face outward
+            // Maintain image aspect ratio
+            const aspect = img.naturalWidth / img.naturalHeight;
+            let drawW, drawH;
+            let scale=4;
+
+            if (aspect >= 1) {
+                // wider than tall
+                drawW = imageSize*2;
+                drawH = (imageSize / aspect)*2;
+            } else {
+                // taller than wide
+                drawH = imageSize*2;
+                drawW = (imageSize * aspect)*2;
+            }
+
+            // Center the image
+            ctx.drawImage(
+                img,
+                -drawW / 2,
+                -drawH / 2,
+                drawW,
+                drawH
+            );
+            ctx.restore();
+        }
+
+        ctx.restore();
         start += slice;
     }
 
-    // pointer at top center
+    // pointer
     ctx.fillStyle = "black";
     ctx.beginPath();
     ctx.moveTo(cx - 20, 5);
